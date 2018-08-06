@@ -1,6 +1,6 @@
 from flask import jsonify, request
 
-from twits_service.models.twit import Twit as twit_model
+from twits_service.models.twitmodel import TwitModel as twit_model
 from twits_service.services.twits import TwitsService
 from twits_service.twitter_apis.search import TwitterSearchApi
 
