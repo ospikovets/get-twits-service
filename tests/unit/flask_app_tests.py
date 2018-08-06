@@ -1,6 +1,7 @@
 import unittest
+from unittest.mock import patch
 
-from twits_service.flask_app.views import app
+from twits_service.flask_app.views import app, ts
 
 
 class FlaskAppTestCase(unittest.TestCase):
@@ -14,10 +15,46 @@ class FlaskAppTestCase(unittest.TestCase):
 class ViewsTests(FlaskAppTestCase):
     """Test requests handling by the application."""
 
-    def test_hashtags_get(self):
+    MOCK_TWITS = [
+        {
+            'account': {
+                'fullname': 'Twitter',
+                'href': '/Twitter',
+                'id': 783214,
+            },
+            'date': '2:54 PM - 8 Mar 2018',
+            'hashtags': ['#InternationalWomensDay'],
+            'likes': 287,
+            'replies': 17,
+            'retweets': 70,
+            'text': 'Powerful voices. Inspiring women.\n\n#InternationalWomensDay '
+                    'https://twitter.com/i/moments/971870564246634496'
+        },
+    ]
+
+    class MockTwitModel:
+        def __init__(self, twit_dict):
+            self.twit_dict = twit_dict
+
+        def as_dict(self):
+            return self.twit_dict
+
+    def mock_get_twits(self, pages_limit):
+        all_twits = [self.MockTwitModel(twit_dict) for twit_dict in self.MOCK_TWITS]
+        return all_twits[:pages_limit]
+
+    def mock_get_twits_by_hashtag(self, hashtag, pages_limit):
+        return self.mock_get_twits(pages_limit)
+
+    def mock_get_twits_by_username(self, username, pages_limit):
+        return self.mock_get_twits(pages_limit)
+
+    @patch.object(ts, 'get_twits_by_hashtag')
+    def test_hashtags_get(self, mock_get_twits_by_hashtag):
         """Test GET request to /hashtags/<hashtag> endpoint."""
 
         hashtag = 'InternationalWomensDay'
+        mock_get_twits_by_hashtag.side_effect = self.mock_get_twits_by_hashtag
 
         rsp = self.client.get(f'/hashtags/{hashtag}')
 
@@ -25,48 +62,41 @@ class ViewsTests(FlaskAppTestCase):
         self.assertEqual(200, rsp.status_code)
         self.assertEqual('application/json', rsp.mimetype)
 
-        for twit in rsp.json:
+        for index, twit in enumerate(rsp.json):
             self.validate_twit_layout(twit)
-    
-            # Test response content
-            self.assertDictEqual({
-                'account': {
-                    'fullname': 'Twitter',
-                    'href': '/Twitter',
-                    'id': 783214,
-                },
-                'date': '2:54 PM - 8 Mar 2018',
-                'hashtags': ['#InternationalWomensDay'],
-                'likes': 287,
-                'replies': 17,
-                'retweets': 70,
-                'text': 'Powerful voices. Inspiring women.\n\n#InternationalWomensDay '
-                        'https://twitter.com/i/moments/971870564246634496'
-            }, twit)
+            self.assertDictEqual(self.MOCK_TWITS[index], twit)
 
-    def test_hashtags_get_custom_pages_limit(self):
+    @patch.object(ts, 'get_twits_by_hashtag')
+    def test_hashtags_get_custom_pages_limit(self, mock_get_twits_by_hashtag):
         """Test pages_limit query parameter for GET request to /hashtags/<hashtag> endpoint."""
 
         hashtag = 'InternationalWomensDay'
         pages_limit = 3
+        mock_get_twits_by_hashtag.side_effect = self.mock_get_twits_by_hashtag
 
         rsp = self.client.get(f'/hashtags/{hashtag}?pages_limit={pages_limit}')
 
-        self.assertLessEqual(pages_limit, len(rsp.json))
+        mock_get_twits_by_hashtag.assert_called_once_with(hashtag, pages_limit=pages_limit)
+        self.assertLessEqual(len(rsp.json), pages_limit)
 
-    def test_hashtags_get_default_pages_limit(self):
+    @patch.object(ts, 'get_twits_by_hashtag')
+    def test_hashtags_get_default_pages_limit(self, mock_get_twits_by_hashtag):
         """Test default pages_limit==10 for GET request to /hashtags/<hashtag> endpoint."""
 
         hashtag = 'InternationalWomensDay'
+        mock_get_twits_by_hashtag.side_effect = self.mock_get_twits_by_hashtag
 
         rsp = self.client.get(f'/hashtags/{hashtag}')
 
-        self.assertLessEqual(10, len(rsp.json))
+        mock_get_twits_by_hashtag.assert_called_once_with(hashtag, pages_limit=10)
+        self.assertLessEqual(len(rsp.json), 10)
 
-    def test_users_get(self):
+    @patch.object(ts, 'get_twits_by_username')
+    def test_users_get(self, mock_get_twits_by_username):
         """Test GET request to /users/<user> endpoint."""
 
         user = 'Twitter'
+        mock_get_twits_by_username.side_effect = self.mock_get_twits_by_username
 
         rsp = self.client.get(f'/users/{user}')
 
@@ -74,26 +104,12 @@ class ViewsTests(FlaskAppTestCase):
         self.assertEqual(200, rsp.status_code)
         self.assertEqual('application/json', rsp.mimetype)
 
-        for twit in rsp.json:
+        for index, twit in enumerate(rsp.json):
             self.validate_twit_layout(twit)
+            self.assertDictEqual(self.MOCK_TWITS[index], twit)
 
-            # Test response content
-            self.assertDictEqual({
-                'account': {
-                    'fullname': 'Twitter',
-                    'href': '/Twitter',
-                    'id': 783214,
-                },
-                'date': '2:54 PM - 8 Mar 2018',
-                'hashtags': ['#InternationalWomensDay'],
-                'likes': 287,
-                'replies': 17,
-                'retweets': 70,
-                'text': 'Powerful voices. Inspiring women.\n\n#InternationalWomensDay '
-                        'https://twitter.com/i/moments/971870564246634496'
-            }, twit)
-
-    def test_users_get_custom_pages_limit(self):
+    @patch.object(ts, 'get_twits_by_username')
+    def test_users_get_custom_pages_limit(self, mock_get_twits_by_username):
         """Test pages_limit query parameter for GET request to /users/<user> endpoint."""
 
         user = 'Twitter'
@@ -101,16 +117,19 @@ class ViewsTests(FlaskAppTestCase):
 
         rsp = self.client.get(f'/users/{user}?pages_limit={pages_limit}')
 
-        self.assertLessEqual(pages_limit, len(rsp.json))
+        mock_get_twits_by_username.assert_called_once_with(user, pages_limit=pages_limit)
+        self.assertLessEqual(len(rsp.json), pages_limit)
 
-    def test_users_get_default_pages_limit(self):
+    @patch.object(ts, 'get_twits_by_username')
+    def test_users_get_default_pages_limit(self, mock_get_twits_by_username):
         """Test default pages_limit==10 for GET request to /users/<user> endpoint."""
 
         user = 'Twitter'
 
         rsp = self.client.get(f'/users/{user}')
 
-        self.assertLessEqual(10, len(rsp.json))
+        mock_get_twits_by_username.assert_called_once_with(user, pages_limit=10)
+        self.assertLessEqual(len(rsp.json), 10)
 
     # =====================================================
     # ================== Test Helpers =====================
