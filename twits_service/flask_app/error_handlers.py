@@ -1,11 +1,6 @@
-__all__ = ['not_found', 'method_not_allowed']
-
-from flask import jsonify
-
-from . import app
+from flask import jsonify, Blueprint
 
 
-@app.errorhandler(404)
 def not_found(error):
     return jsonify({
             'error': 'NotFound',
@@ -13,7 +8,6 @@ def not_found(error):
         }), 404
 
 
-@app.errorhandler(405)
 def method_not_allowed(error):
     return jsonify({
         'error': 'MethodNotAllowed',

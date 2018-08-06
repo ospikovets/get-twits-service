@@ -1,7 +1,8 @@
 import unittest
 from unittest.mock import patch
 
-from twits_service.flask_app.views import app, ts
+from twits_service.flask_app import app
+from twits_service.flask_app.views import ts
 
 
 class FlaskAppTestCase(unittest.TestCase):
