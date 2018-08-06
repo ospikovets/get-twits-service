@@ -3,7 +3,9 @@ from flask import jsonify, request
 from twits_service.models.twit import Twit as twit_model
 from twits_service.services.twits import TwitsService
 from twits_service.twitter_apis.search import TwitterSearchApi
+
 from . import app
+from .error_handlers import *
 
 api = TwitterSearchApi(url='https://api.twitter.com/1.1/search/tweets.json')
 ts = TwitsService(api, twit_model)
